@@ -895,15 +895,24 @@
       prankVideo.muted = false;
       prankVideo.volume = 1;
       try {
+        if (prankVideo.paused) {
+          await prankVideo.play();
+        }
+      } catch (e) {
+      }
+      try {
         if (prankVideo.requestFullscreen && !document.fullscreenElement) {
           await prankVideo.requestFullscreen();
         }
       } catch (e) {
       }
-      if (prankVideo.paused) {
-        prankVideo.currentTime = 0;
+      try {
+        if (prankVideo.paused) {
+          prankVideo.currentTime = 0;
+          await prankVideo.play();
+        }
+      } catch (e) {
       }
-      prankVideo.play().catch(() => {});
     }
 
     function loop() {
