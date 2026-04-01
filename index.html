@@ -1,0 +1,1121 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>大鱼吃小鱼</title>
+  <style>
+    :root {
+      --bg1: #081826;
+      --bg2: #123a58;
+      --panel: rgba(255, 255, 255, 0.12);
+      --text: #eaf7ff;
+      --accent: #ffd166;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at 20% 15%, #2f7aa5 0%, var(--bg2) 40%, var(--bg1) 100%);
+    }
+
+    #game {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      cursor: crosshair;
+    }
+
+    .hud {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: var(--panel);
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      padding: 8px 10px;
+      font-size: 14px;
+      user-select: none;
+      z-index: 20;
+    }
+
+    .tag {
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      white-space: nowrap;
+    }
+
+    .help {
+      position: fixed;
+      right: 12px;
+      top: 12px;
+      max-width: 320px;
+      line-height: 1.45;
+      font-size: 13px;
+      background: var(--panel);
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      padding: 10px 12px;
+      user-select: none;
+      z-index: 20;
+    }
+
+    .mobile-tools {
+      position: fixed;
+      right: 12px;
+      bottom: 12px;
+      display: flex;
+      gap: 8px;
+      z-index: 30;
+    }
+
+    .mode-btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #12212f;
+      background: linear-gradient(135deg, #ffd166 0%, #fcbf49 100%);
+      cursor: pointer;
+    }
+
+    .mode-btn.active {
+      background: linear-gradient(135deg, #b8ffd9 0%, #7fffd4 100%);
+    }
+
+    .reset-btn {
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #e9f8ff;
+      background: rgba(13, 36, 54, 0.72);
+      cursor: pointer;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.42);
+      text-align: center;
+      padding: 20px;
+      z-index: 40;
+    }
+
+    .overlay.show { display: flex; }
+
+    .prank-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 16px;
+    }
+
+    .prank-overlay.show { display: flex; }
+
+    .prank-card {
+      position: relative;
+      width: min(92vw, 760px);
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: #000;
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5);
+    }
+
+    .prank-media {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: radial-gradient(circle at 40% 30%, #273e55 0%, #0a1018 72%);
+    }
+
+    .prank-media video {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+      object-fit: cover;
+    }
+
+    .prank-media.video-hidden video {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .fake-start {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+      min-width: 160px;
+      font-size: 17px;
+    }
+
+    .real-start-hidden {
+      position: absolute;
+      right: 10px;
+      bottom: 8px;
+      z-index: 3;
+      border: 0;
+      margin: 0;
+      padding: 3px 6px;
+      font-size: 11px;
+      border-radius: 6px;
+      color: rgba(255, 255, 255, 0.35);
+      background: rgba(0, 0, 0, 0.16);
+      cursor: pointer;
+    }
+
+    .real-start-hidden:hover {
+      color: rgba(255, 255, 255, 0.85);
+      background: rgba(0, 0, 0, 0.35);
+    }
+
+    .card {
+      min-width: 280px;
+      max-width: 420px;
+      padding: 22px;
+      border-radius: 14px;
+      background: rgba(9, 29, 46, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 26px;
+      letter-spacing: 1px;
+    }
+
+    p { margin: 8px 0; }
+
+    button {
+      margin-top: 12px;
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 18px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #2c2200;
+      background: linear-gradient(135deg, #ffd166 0%, #fcbf49 100%);
+      cursor: pointer;
+    }
+
+    button:hover { filter: brightness(1.05); }
+
+    .joystick {
+      position: fixed;
+      left: 16px;
+      bottom: 18px;
+      width: 126px;
+      height: 126px;
+      border-radius: 50%;
+      z-index: 35;
+      touch-action: none;
+      display: none;
+      user-select: none;
+    }
+
+    .joystick.show { display: block; }
+
+    .stick-base {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      backdrop-filter: blur(2px);
+    }
+
+    .stick {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 54px;
+      height: 54px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: rgba(255, 209, 102, 0.95);
+      border: 2px solid rgba(255, 255, 255, 0.72);
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 900px) {
+      .hud {
+        top: 8px;
+        left: 8px;
+        padding: 7px 8px;
+        gap: 6px;
+        font-size: 12px;
+      }
+
+      .help {
+        top: 8px;
+        right: 8px;
+        max-width: min(58vw, 250px);
+        font-size: 12px;
+        line-height: 1.4;
+        padding: 8px 9px;
+      }
+
+      .mobile-tools {
+        right: 8px;
+        bottom: 8px;
+      }
+
+      .mode-btn {
+        padding: 8px 10px;
+        font-size: 12px;
+      }
+
+      .reset-btn {
+        padding: 8px 10px;
+        font-size: 12px;
+      }
+    }
+
+    @media (orientation: portrait) and (max-width: 900px) {
+      body.mobile-mode .help::after {
+        content: "\A建议切到横屏体验转盘控制";
+        white-space: pre;
+        color: #ffd166;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div class="hud">
+    <div class="tag">分数：<span id="score">0</span></div>
+    <div class="tag">体型：<span id="size">22</span></div>
+    <div class="tag">等级：<span id="level">1</span></div>
+  </div>
+
+  <div class="help" id="help">
+    鼠标/触摸/键盘（W/A/S/D、方向键）控制大鱼。<br>
+    手机可点右下角进入“横屏+转盘”模式。<br>
+    小鱼为原创矢量素材风格，支持免费非商用使用。
+  </div>
+
+  <div class="mobile-tools">
+    <button id="modeBtn" class="mode-btn" type="button">横屏+转盘：关</button>
+    <button id="resetPrankBtn" class="reset-btn" type="button">还原愚人节</button>
+  </div>
+
+  <div id="joystick" class="joystick" aria-hidden="true">
+    <div class="stick-base"></div>
+    <div id="stick" class="stick"></div>
+  </div>
+
+  <div class="prank-overlay" id="prankOverlay">
+    <div class="prank-card">
+      <div class="prank-media video-hidden" id="prankMedia">
+        <video
+          id="prankVideo"
+          src="./assets/prank-video.mp4"
+          poster="https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg"
+          preload="auto"
+          controls
+          playsinline
+          webkit-playsinline
+          loop
+        ></video>
+        <button id="fakeStartBtn" class="fake-start" type="button">开始游戏</button>
+        <button id="realStartBtn" class="real-start-hidden" type="button">真的开始</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="card">
+      <h1 id="title">大鱼吃小鱼</h1>
+      <p id="msg">准备好开始了吗？</p>
+      <button id="btn">开始游戏</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+
+    const scoreEl = document.getElementById('score');
+    const sizeEl = document.getElementById('size');
+    const levelEl = document.getElementById('level');
+    const overlay = document.getElementById('overlay');
+    const prankOverlay = document.getElementById('prankOverlay');
+    const titleEl = document.getElementById('title');
+    const msgEl = document.getElementById('msg');
+    const btn = document.getElementById('btn');
+    const fakeStartBtn = document.getElementById('fakeStartBtn');
+    const realStartBtn = document.getElementById('realStartBtn');
+    const prankVideo = document.getElementById('prankVideo');
+    const prankMedia = document.getElementById('prankMedia');
+    const resetPrankBtn = document.getElementById('resetPrankBtn');
+    const modeBtn = document.getElementById('modeBtn');
+    const joystickEl = document.getElementById('joystick');
+    const stickEl = document.getElementById('stick');
+
+    const isTouchDevice = window.matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window);
+    const PRANK_STORAGE_KEY = 'big_fish_april_fools_seen_v1';
+
+    const fishTypes = ['round', 'stripe', 'needle', 'angel', 'box', 'puffer', 'koi', 'manta', 'dart'];
+
+    const state = {
+      width: window.innerWidth,
+      height: window.innerHeight,
+      running: false,
+      score: 0,
+      spawnTick: 0,
+      targetX: window.innerWidth * 0.5,
+      targetY: window.innerHeight * 0.5,
+      fish: [],
+      bubbles: [],
+      mobileMode: false,
+      joystick: {
+        engaged: false,
+        pointerId: null,
+        inputX: 0,
+        inputY: 0,
+        maxRadius: 42
+      },
+      keys: {
+        w: false,
+        a: false,
+        s: false,
+        d: false,
+        arrowup: false,
+        arrowleft: false,
+        arrowdown: false,
+        arrowright: false
+      }
+    };
+
+    const player = {
+      x: state.width * 0.5,
+      y: state.height * 0.5,
+      r: 22,
+      speed: 2.5,
+      color: '#ffe08a'
+    };
+
+    function resize() {
+      state.width = window.innerWidth;
+      state.height = window.innerHeight;
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      canvas.width = Math.floor(state.width * dpr);
+      canvas.height = Math.floor(state.height * dpr);
+      canvas.style.width = state.width + 'px';
+      canvas.style.height = state.height + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function rand(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function dist(a, b) {
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+
+    function clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
+    function spawnFish() {
+      if (!state.running) return;
+      const maxFishOnScreen = 12;
+      if (state.fish.length >= maxFishOnScreen) return;
+
+      const side = Math.floor(Math.random() * 4);
+      const minR = Math.max(7, player.r * 0.35);
+      const maxR = Math.max(16, player.r * 1.35);
+      const r = rand(minR, maxR);
+      const speed = rand(0.35, 1.15) * (22 / Math.max(16, r));
+      let x;
+      let y;
+      let vx;
+      let vy;
+
+      if (side === 0) {
+        x = -r;
+        y = rand(0, state.height);
+        vx = speed;
+        vy = rand(-0.45, 0.45);
+      } else if (side === 1) {
+        x = state.width + r;
+        y = rand(0, state.height);
+        vx = -speed;
+        vy = rand(-0.45, 0.45);
+      } else if (side === 2) {
+        x = rand(0, state.width);
+        y = -r;
+        vx = rand(-0.45, 0.45);
+        vy = speed;
+      } else {
+        x = rand(0, state.width);
+        y = state.height + r;
+        vx = rand(-0.45, 0.45);
+        vy = -speed;
+      }
+
+      state.fish.push({
+        x,
+        y,
+        r,
+        vx,
+        vy,
+        hue: Math.floor(rand(0, 360)),
+        wiggle: rand(0, Math.PI * 2),
+        type: fishTypes[Math.floor(rand(0, fishTypes.length))]
+      });
+    }
+
+    function spawnBubble() {
+      if (state.bubbles.length > 60) return;
+      state.bubbles.push({
+        x: rand(0, state.width),
+        y: state.height + rand(0, 150),
+        r: rand(1.5, 5),
+        vy: rand(0.3, 1.3),
+        alpha: rand(0.15, 0.45)
+      });
+    }
+
+    function movePlayer() {
+      const s = player.speed * (24 / Math.max(16, player.r));
+      const joy = state.joystick;
+
+      if (state.mobileMode && (Math.abs(joy.inputX) > 0.01 || Math.abs(joy.inputY) > 0.01)) {
+        player.x += joy.inputX * s;
+        player.y += joy.inputY * s;
+        state.targetX = player.x;
+        state.targetY = player.y;
+      } else {
+        const left = state.keys.a || state.keys.arrowleft;
+        const right = state.keys.d || state.keys.arrowright;
+        const up = state.keys.w || state.keys.arrowup;
+        const down = state.keys.s || state.keys.arrowdown;
+        const hasKeyboardInput = left || right || up || down;
+
+        if (hasKeyboardInput) {
+          let inputX = (right ? 1 : 0) - (left ? 1 : 0);
+          let inputY = (down ? 1 : 0) - (up ? 1 : 0);
+          const inputLen = Math.hypot(inputX, inputY);
+          if (inputLen > 0) {
+            inputX /= inputLen;
+            inputY /= inputLen;
+            player.x += inputX * s;
+            player.y += inputY * s;
+            state.targetX = player.x;
+            state.targetY = player.y;
+          }
+        } else {
+          const dx = state.targetX - player.x;
+          const dy = state.targetY - player.y;
+          const d = Math.hypot(dx, dy);
+          if (d > 0.1) {
+            player.x += (dx / d) * Math.min(d, s);
+            player.y += (dy / d) * Math.min(d, s);
+          }
+        }
+      }
+
+      player.x = clamp(player.x, player.r, state.width - player.r);
+      player.y = clamp(player.y, player.r, state.height - player.r);
+    }
+
+    function updateFish() {
+      for (let i = state.fish.length - 1; i >= 0; i--) {
+        const f = state.fish[i];
+        f.x += f.vx;
+        f.y += f.vy;
+        f.wiggle += 0.12;
+
+        if (f.x < -100 || f.x > state.width + 100 || f.y < -100 || f.y > state.height + 100) {
+          state.fish.splice(i, 1);
+          continue;
+        }
+
+        const hit = dist(player, f) <= player.r + f.r;
+        if (!hit) continue;
+
+        if (player.r >= f.r * 1.02) {
+          state.score += Math.max(1, Math.floor(f.r * 2));
+          const area = player.r * player.r + f.r * f.r * 0.2;
+          player.r = Math.min(110, Math.sqrt(area));
+          state.fish.splice(i, 1);
+        } else {
+          endGame();
+          return;
+        }
+      }
+    }
+
+    function updateBubbles() {
+      for (let i = state.bubbles.length - 1; i >= 0; i--) {
+        const b = state.bubbles[i];
+        b.y -= b.vy;
+        if (b.y < -20) state.bubbles.splice(i, 1);
+      }
+    }
+
+    function drawEye(r) {
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(r * 0.42, -r * 0.12, Math.max(2, r * 0.11), 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#111';
+      ctx.beginPath();
+      ctx.arc(r * 0.45, -r * 0.12, Math.max(1.2, r * 0.05), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawNpcFish(f) {
+      const facing = f.vx >= 0 ? 1 : -1;
+      const r = f.r;
+      const h = f.hue;
+      const c1 = `hsl(${h} 74% 64%)`;
+      const c2 = `hsl(${(h + 28) % 360} 72% 52%)`;
+      const c3 = `hsl(${(h + 170) % 360} 58% 78%)`;
+
+      ctx.save();
+      ctx.translate(f.x, f.y);
+      if (facing < 0) ctx.scale(-1, 1);
+
+      const tailSwing = Math.sin(f.wiggle) * r * 0.16;
+
+      if (f.type === 'round') {
+        ctx.fillStyle = c1;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, r * 0.95, r * 0.72, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = c2;
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.9, 0);
+        ctx.lineTo(-r * 1.55, -r * 0.42 + tailSwing);
+        ctx.lineTo(-r * 1.55, r * 0.42 + tailSwing);
+        ctx.closePath();
+        ctx.fill();
+      } else if (f.type === 'stripe') {
+        ctx.fillStyle = c1;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, r, r * 0.62, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = c2;
+        for (let i = -1; i <= 1; i++) {
+          ctx.beginPath();
+          ctx.ellipse(-r * 0.25 + i * r * 0.28, 0, r * 0.08, r * 0.6, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.86, 0);
+        ctx.lineTo(-r * 1.52, -r * 0.36 + tailSwing);
+        ctx.lineTo(-r * 1.52, r * 0.36 + tailSwing);
+        ctx.closePath();
+        ctx.fill();
+      } else if (f.type === 'needle') {
+        ctx.fillStyle = c1;
+        ctx.beginPath();
+        ctx.ellipse(-r * 0.05, 0, r * 1.18, r * 0.4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = c2;
+        ctx.beginPath();
+        ctx.moveTo(r * 1.08, 0);
+        ctx.lineTo(r * 1.34, -r * 0.08);
+        ctx.lineTo(r * 1.34, r * 0.08);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(-r * 1.0, 0);
+        ctx.lineTo(-r * 1.65, -r * 0.25 + tailSwing);
+        ctx.lineTo(-r * 1.65, r * 0.25 + tailSwing);
+        ctx.closePath();
+        ctx.fill();
+      } else if (f.type === 'angel') {
+        ctx.fillStyle = c1;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, r * 0.8, r * 0.8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = c3;
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.1, -r * 0.8);
+        ctx.lineTo(r * 0.3, -r * 1.35);
+        ctx.lineTo(r * 0.08, -r * 0.25);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.2, r * 0.8);
+        ctx.lineTo(r * 0.2, r * 1.35);
+        ctx.lineTo(r * 0.12, r * 0.3);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = c2;
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.75, 0);
+        ctx.lineTo(-r * 1.38, -r * 0.42 + tailSwing);
+        ctx.lineTo(-r * 1.38, r * 0.42 + tailSwing);
+        ctx.closePath();
+        ctx.fill();
+      } else if (f.type === 'box') {
+        ctx.fillStyle = c1;
+        ctx.beginPath();
+        ctx.roundRect(-r * 0.86, -r * 0.56, r * 1.58, r * 1.12, r * 0.24);
+        ctx.fill();
+        ctx.fillStyle = c2;
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.86, 0);
+        ctx.lineTo(-r * 1.48, -r * 0.32 + tailSwing);
+        ctx.lineTo(-r * 1.48, r * 0.32 + tailSwing);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = c3;
+        ctx.beginPath();
+        ctx.arc(-r * 0.25, -r * 0.15, r * 0.12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(r * 0.05, r * 0.18, r * 0.1, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (f.type === 'puffer') {
+        ctx.fillStyle = c1;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.75, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = c2;
+        ctx.lineWidth = Math.max(1, r * 0.06);
+        for (let i = 0; i < 10; i++) {
+          const a = (i / 10) * Math.PI * 2 + f.wiggle * 0.15;
+          const x1 = Math.cos(a) * r * 0.65;
+          const y1 = Math.sin(a) * r * 0.65;
+          const x2 = Math.cos(a) * r * 0.95;
+          const y2 = Math.sin(a) * r * 0.95;
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+        }
+        ctx.fillStyle = c2;
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.62, 0);
+        ctx.lineTo(-r * 1.2, -r * 0.28 + tailSwing);
+        ctx.lineTo(-r * 1.2, r * 0.28 + tailSwing);
+        ctx.closePath();
+        ctx.fill();
+      } else if (f.type === 'koi') {
+        ctx.fillStyle = '#f7f6ef';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, r, r * 0.58, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = c2;
+        ctx.beginPath();
+        ctx.arc(r * 0.02, -r * 0.08, r * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(-r * 0.25, r * 0.14, r * 0.16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = c1;
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.85, 0);
+        ctx.lineTo(-r * 1.52, -r * 0.38 + tailSwing);
+        ctx.lineTo(-r * 1.52, r * 0.38 + tailSwing);
+        ctx.closePath();
+        ctx.fill();
+      } else if (f.type === 'manta') {
+        ctx.fillStyle = c1;
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.8, 0);
+        ctx.quadraticCurveTo(-r * 0.15, -r * 0.95, r * 1.0, 0);
+        ctx.quadraticCurveTo(-r * 0.15, r * 0.95, -r * 0.8, 0);
+        ctx.fill();
+        ctx.fillStyle = c2;
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.8, 0);
+        ctx.lineTo(-r * 1.5, -r * 0.2 + tailSwing);
+        ctx.lineTo(-r * 1.5, r * 0.2 + tailSwing);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        ctx.fillStyle = c1;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, r * 0.9, r * 0.48, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = c2;
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.76, 0);
+        ctx.lineTo(-r * 1.38, -r * 0.3 + tailSwing);
+        ctx.lineTo(-r * 1.38, r * 0.3 + tailSwing);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = c3;
+        ctx.beginPath();
+        ctx.ellipse(-r * 0.12, -r * 0.26, r * 0.18, r * 0.09, 0.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      drawEye(r);
+      ctx.restore();
+    }
+
+    function drawPlayerFish() {
+      const dirX = state.mobileMode && Math.abs(state.joystick.inputX) > 0.05
+        ? state.joystick.inputX
+        : state.targetX - player.x;
+      const wiggle = performance.now() * 0.01;
+      const facing = dirX >= 0 ? 1 : -1;
+      const r = player.r;
+
+      ctx.save();
+      ctx.translate(player.x, player.y);
+      if (facing < 0) ctx.scale(-1, 1);
+
+      const tailSwing = Math.sin(wiggle) * r * 0.16;
+      ctx.fillStyle = player.color;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r, r * 0.65, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffbe55';
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.8, 0);
+      ctx.lineTo(-r * 1.45, -r * 0.4 + tailSwing);
+      ctx.lineTo(-r * 1.45, r * 0.4 + tailSwing);
+      ctx.closePath();
+      ctx.fill();
+
+      drawEye(r);
+      ctx.restore();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, state.width, state.height);
+
+      for (const b of state.bubbles) {
+        ctx.fillStyle = `rgba(214,245,255,${b.alpha})`;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      for (const f of state.fish) {
+        drawNpcFish(f);
+      }
+
+      drawPlayerFish();
+    }
+
+    function level() {
+      return 1 + Math.floor(state.score / 120);
+    }
+
+    function renderHud() {
+      scoreEl.textContent = String(state.score);
+      sizeEl.textContent = player.r.toFixed(1);
+      levelEl.textContent = String(level());
+    }
+
+    function resetGame() {
+      state.score = 0;
+      state.spawnTick = 0;
+      state.fish = [];
+      state.bubbles = [];
+      Object.keys(state.keys).forEach((key) => { state.keys[key] = false; });
+      resetJoystick();
+      player.r = 22;
+      player.x = state.width * 0.5;
+      player.y = state.height * 0.5;
+      state.targetX = player.x;
+      state.targetY = player.y;
+      renderHud();
+    }
+
+    function startGame() {
+      resetGame();
+      state.running = true;
+      overlay.classList.remove('show');
+      prankOverlay.classList.remove('show');
+      prankVideo.pause();
+      prankVideo.currentTime = 0;
+      prankMedia.classList.add('video-hidden');
+    }
+
+    function endGame() {
+      state.running = false;
+      titleEl.textContent = '游戏结束';
+      msgEl.innerHTML = `最终分数：<b>${state.score}</b><br>当前体型：<b>${player.r.toFixed(1)}</b>`;
+      btn.textContent = '再来一局';
+      overlay.classList.add('show');
+    }
+
+    function showNormalStartOverlay() {
+      titleEl.textContent = '大鱼吃小鱼';
+      msgEl.textContent = '准备好开始了吗？';
+      btn.textContent = '开始游戏';
+      overlay.classList.add('show');
+    }
+
+    function showPrankOverlay() {
+      overlay.classList.remove('show');
+      prankOverlay.classList.add('show');
+      prankMedia.classList.add('video-hidden');
+      prankVideo.currentTime = 0;
+      prankVideo.pause();
+      prankVideo.muted = false;
+      prankVideo.volume = 1;
+    }
+
+    async function playPrankVideoFullscreen() {
+      prankMedia.classList.remove('video-hidden');
+      prankVideo.defaultMuted = false;
+      prankVideo.muted = false;
+      prankVideo.volume = 1;
+      try {
+        if (prankVideo.requestFullscreen && !document.fullscreenElement) {
+          await prankVideo.requestFullscreen();
+        }
+      } catch (e) {
+      }
+      if (prankVideo.paused) {
+        prankVideo.currentTime = 0;
+      }
+      prankVideo.play().catch(() => {});
+    }
+
+    function loop() {
+      if (state.running) {
+        state.spawnTick -= 1;
+        if (state.spawnTick <= 0) {
+          spawnFish();
+          state.spawnTick = Math.max(16, Math.floor(rand(34, 58) - level() * 1.4));
+        }
+        if (Math.random() < 0.35) spawnBubble();
+
+        movePlayer();
+        updateFish();
+        updateBubbles();
+        renderHud();
+      } else {
+        updateBubbles();
+        if (Math.random() < 0.2) spawnBubble();
+      }
+
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    function setTarget(clientX, clientY) {
+      state.targetX = clamp(clientX, 0, state.width);
+      state.targetY = clamp(clientY, 0, state.height);
+    }
+
+    function resetJoystick() {
+      state.joystick.engaged = false;
+      state.joystick.pointerId = null;
+      state.joystick.inputX = 0;
+      state.joystick.inputY = 0;
+      stickEl.style.transform = 'translate(-50%, -50%)';
+    }
+
+    function updateJoystickFromPoint(clientX, clientY) {
+      const rect = joystickEl.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = clientX - cx;
+      const dy = clientY - cy;
+      const d = Math.hypot(dx, dy);
+      const maxR = state.joystick.maxRadius;
+
+      let nx = 0;
+      let ny = 0;
+      let drawX = 0;
+      let drawY = 0;
+
+      if (d > 0.0001) {
+        const use = Math.min(d, maxR);
+        nx = dx / d;
+        ny = dy / d;
+        drawX = nx * use;
+        drawY = ny * use;
+      }
+
+      state.joystick.inputX = drawX / maxR;
+      state.joystick.inputY = drawY / maxR;
+      stickEl.style.transform = `translate(calc(-50% + ${drawX}px), calc(-50% + ${drawY}px))`;
+    }
+
+    function setMobileMode(on) {
+      state.mobileMode = on;
+      document.body.classList.toggle('mobile-mode', on);
+      modeBtn.classList.toggle('active', on);
+      modeBtn.textContent = on ? '横屏+转盘：开' : '横屏+转盘：关';
+      joystickEl.classList.toggle('show', on);
+      if (!on) resetJoystick();
+    }
+
+    async function requestLandscapeAndFullscreen() {
+      try {
+        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        }
+      } catch (e) {
+      }
+
+      try {
+        if (screen.orientation && screen.orientation.lock) {
+          await screen.orientation.lock('landscape');
+        }
+      } catch (e) {
+      }
+    }
+
+    window.addEventListener('mousemove', (e) => {
+      if (!state.mobileMode) setTarget(e.clientX, e.clientY);
+    });
+
+    window.addEventListener('touchstart', (e) => {
+      const t = e.touches[0];
+      if (!t) return;
+      if (state.mobileMode) return;
+      setTarget(t.clientX, t.clientY);
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      const t = e.touches[0];
+      if (!t) return;
+      if (state.mobileMode) return;
+      setTarget(t.clientX, t.clientY);
+    }, { passive: true });
+
+    window.addEventListener('keydown', (e) => {
+      const key = e.key.toLowerCase();
+      if (Object.prototype.hasOwnProperty.call(state.keys, key)) {
+        state.keys[key] = true;
+      }
+      if (key.startsWith('arrow')) {
+        e.preventDefault();
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const key = e.key.toLowerCase();
+      if (Object.prototype.hasOwnProperty.call(state.keys, key)) {
+        state.keys[key] = false;
+      }
+    });
+
+    joystickEl.addEventListener('pointerdown', (e) => {
+      if (!state.mobileMode) return;
+      state.joystick.engaged = true;
+      state.joystick.pointerId = e.pointerId;
+      joystickEl.setPointerCapture(e.pointerId);
+      updateJoystickFromPoint(e.clientX, e.clientY);
+      e.preventDefault();
+    });
+
+    joystickEl.addEventListener('pointermove', (e) => {
+      if (!state.mobileMode) return;
+      if (!state.joystick.engaged || state.joystick.pointerId !== e.pointerId) return;
+      updateJoystickFromPoint(e.clientX, e.clientY);
+      e.preventDefault();
+    });
+
+    function releaseJoystick(e) {
+      if (!state.joystick.engaged || state.joystick.pointerId !== e.pointerId) return;
+      resetJoystick();
+    }
+
+    joystickEl.addEventListener('pointerup', releaseJoystick);
+    joystickEl.addEventListener('pointercancel', releaseJoystick);
+    joystickEl.addEventListener('pointerleave', releaseJoystick);
+
+    window.addEventListener('blur', () => {
+      Object.keys(state.keys).forEach((key) => { state.keys[key] = false; });
+      resetJoystick();
+    });
+
+    window.addEventListener('resize', resize);
+
+    modeBtn.addEventListener('click', async () => {
+      const next = !state.mobileMode;
+      setMobileMode(next);
+      if (next) await requestLandscapeAndFullscreen();
+    });
+
+    fakeStartBtn.addEventListener('click', () => {
+      fakeStartBtn.textContent = '再点也没用';
+      playPrankVideoFullscreen();
+    });
+
+    realStartBtn.addEventListener('click', () => {
+      try {
+        localStorage.setItem(PRANK_STORAGE_KEY, '1');
+      } catch (e) {
+      }
+      prankOverlay.classList.remove('show');
+      startGame();
+    });
+
+    prankVideo.addEventListener('click', () => {
+      playPrankVideoFullscreen();
+    });
+
+    resetPrankBtn.addEventListener('click', () => {
+      try {
+        localStorage.removeItem(PRANK_STORAGE_KEY);
+      } catch (e) {
+      }
+      state.running = false;
+      resetGame();
+      showPrankOverlay();
+    });
+
+    btn.addEventListener('click', () => {
+      startGame();
+    });
+
+    if (!isTouchDevice) {
+      modeBtn.style.display = 'none';
+    }
+    setMobileMode(false);
+    let seenPrank = false;
+    try {
+      seenPrank = localStorage.getItem(PRANK_STORAGE_KEY) === '1';
+    } catch (e) {
+      seenPrank = false;
+    }
+    if (seenPrank) {
+      showNormalStartOverlay();
+    } else {
+      showPrankOverlay();
+    }
+    resize();
+    renderHud();
+    loop();
+  </script>
+</body>
+</html>
